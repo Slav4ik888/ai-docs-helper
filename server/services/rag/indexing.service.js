@@ -48,7 +48,31 @@ function googleDocsPubUrl(url) {
   return url;
 }
 
-async function parseGoogleDocs(url) {
+function extractGoogleDocText(docJson) {
+  const parts = [];
+  const content = docJson?.body?.content ?? [];
+  for (const block of content) {
+    const elements = block?.paragraph?.elements ?? [];
+    for (const el of elements) {
+      const text = el?.textRun?.content;
+      if (text) parts.push(text);
+    }
+  }
+  return parts.join('');
+}
+
+async function parseGoogleDocsApi(docId) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}?key=${apiKey}`;
+  const res = await fetch(apiUrl);
+  if (!res.ok) {
+    throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText}`);
+  }
+  const json = await res.json();
+  return extractGoogleDocText(json);
+}
+
+async function parseGoogleDocsScrape(url) {
   const pubUrl = googleDocsPubUrl(url);
   const res = await fetch(pubUrl, { redirect: 'follow' });
   if (!res.ok) throw new Error(`Google Docs fetch failed: ${res.status}`);
@@ -60,6 +84,22 @@ async function parseGoogleDocs(url) {
     if (t) parts.push(t);
   });
   return parts.join('\n');
+}
+
+async function parseGoogleDocs(url) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  const m = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (apiKey && m) {
+    const docId = m[1];
+    return parseGoogleDocsApi(docId);
+  }
+  if (!apiKey) {
+    console.warn(
+      '[gdocs] GOOGLE_API_KEY is not set — falling back to /pub scraping. ' +
+      'Set GOOGLE_API_KEY in your environment secrets to support standard share links.',
+    );
+  }
+  return parseGoogleDocsScrape(url);
 }
 
 function googleDocsTitleCandidates(url) {

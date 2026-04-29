@@ -70,6 +70,17 @@ async function bootstrap() {
     console.log('[server] serving built client from', clientDist);
   }
 
+  // Warn if Google Docs API key is not configured
+  if (!process.env.GOOGLE_API_KEY) {
+    console.warn(
+      '[startup] GOOGLE_API_KEY is not set. Google Docs indexing will fall back to ' +
+      '/pub scraping, which only works for documents published to the web. ' +
+      'Set GOOGLE_API_KEY in your environment secrets to support any shared Google Doc.',
+    );
+  } else {
+    console.log('[startup] GOOGLE_API_KEY is configured — Google Docs API mode enabled.');
+  }
+
   // Background: build index on startup (non-blocking)
   rebuildIndex()
     .then((stats) => console.log('[startup] index ready:', stats))
