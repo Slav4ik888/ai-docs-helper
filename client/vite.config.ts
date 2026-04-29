@@ -22,9 +22,10 @@ export default defineConfig({
     port: 5000,
     strictPort: true,
     allowedHosts: true,
-    hmr: process.env.REPLIT_DEV_DOMAIN
-      ? { protocol: 'wss', host: process.env.REPLIT_DEV_DOMAIN, clientPort: 443 }
-      : true,
+    // The Replit preview iframe blocks Vite's HMR websocket, which causes the
+    // page to flicker (constant "server connection lost" → full reload). We
+    // disable HMR so the page stays stable; refresh manually after edits.
+    hmr: false,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
