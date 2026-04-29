@@ -52,13 +52,26 @@ function googleDocsPubUrl(url) {
 function extractGoogleDocText(docJson) {
   const parts = [];
   const content = docJson?.body?.content ?? [];
-  for (const block of content) {
-    const elements = block?.paragraph?.elements ?? [];
-    for (const el of elements) {
-      const text = el?.textRun?.content;
-      if (text) parts.push(text);
+  function walkBlocks(blocks) {
+    for (const block of blocks ?? []) {
+      const paragraphElements = block?.paragraph?.elements ?? [];
+      for (const el of paragraphElements) {
+        const text = el?.textRun?.content;
+        if (text) parts.push(text);
+      }
+
+      const tableRows = block?.table?.tableRows ?? [];
+      for (const row of tableRows) {
+        const cells = row?.tableCells ?? [];
+        for (const cell of cells) {
+          walkBlocks(cell?.content ?? []);
+          parts.push('\t');
+        }
+        parts.push('\n');
+      }
     }
   }
+  walkBlocks(content);
   return parts.join('');
 }
 
