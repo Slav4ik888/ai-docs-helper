@@ -68,9 +68,9 @@ export function DocumentCard({ document, onDelete }: Props) {
     <Card className="p-3 flex items-start gap-3">
       <div className="text-2xl shrink-0">{getIconByType(document.type)}</div>
       <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
           <StatusBadge status={document.indexStatus ?? 'pending'} error={document.indexError ?? null} />
-          <span className="font-medium text-slate-900 truncate" title={document.title}>
+          <span className="min-w-0 flex-1 font-medium text-slate-900 truncate" title={document.title}>
             {document.title}
           </span>
         </div>
