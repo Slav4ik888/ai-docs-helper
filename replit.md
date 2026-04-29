@@ -2,6 +2,13 @@
 
 A two-service web app that lets employees ask natural-language questions about company documents (PDF / Word / Google Docs) and get answers with cited sources.
 
+## User preferences
+- Язык общения и интерфейса: **русский**.
+- Все задачи (project tasks): заголовок и описание — на русском.
+- Все коммиты, ответы в чате, тексты UI и сообщения об ошибках для пользователя — на русском.
+- Технические идентификаторы (имена файлов, переменных, функций, API-эндпоинтов, npm-пакетов) — оставлять как есть, на английском.
+- Комментарии в коде — на русском.
+
 ## Stack
 - **Backend** (`server/`): Koa (ES modules), `@koa/router`, `koa-body`, SQLite (`better-sqlite3`), `bcryptjs`, `jsonwebtoken`, `pdf-parse`, `mammoth`, `cheerio`, `@xenova/transformers` (embeddings: `Xenova/all-MiniLM-L6-v2`).
 - **Vector store**: pure-JS local store (cosine similarity + JSON persistence) in `server/lib/vectorStore.js`. Replaces `chromadb` because the Node `chromadb` package is only a client and requires a separate Python server. See `DEV_NOTES.md`.
