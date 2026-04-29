@@ -2,6 +2,11 @@ import { searchRelevant } from './rag/search.service.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'openai/gpt-oss-20b:free';
+const FALLBACK_MODELS = [
+  'openai/gpt-oss-20b:free',
+  'openai/gpt-4o-mini',
+  'anthropic/claude-3.5-sonnet',
+];
 
 function buildPrompt(question, chunks) {
   const context = chunks
@@ -82,27 +87,48 @@ export async function ask({ question, history = [] }) {
     { role: 'user', content: buildPrompt(question, chunks) },
   ];
 
-  const res = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://ai-knowlege-css.thm.su',
-      'X-Title': 'AI Knowledge Base',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      temperature: 0.2,
-    }),
-  });
+  let lastError = null;
+  let data = null;
+  for (const model of FALLBACK_MODELS) {
+    const res = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://ai-knowlege-css.thm.su',
+        'X-Title': 'AI Knowledge Base',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.2,
+      }),
+    });
 
-  if (!res.ok) {
+    if (res.ok) {
+      data = await res.json();
+      break;
+    }
+
     const text = await res.text().catch(() => '');
-    throw Object.assign(new Error(`OpenRouter ${res.status}: ${text.slice(0, 300)}`), { status: 502 });
+    lastError = { status: res.status, text: text.slice(0, 300), model };
+    if (res.status !== 503) break;
   }
 
-  const data = await res.json();
+  if (!data) {
+    if (lastError?.status === 503) {
+      return {
+        answer:
+          'LLM временно не доступна. Я нашёл релевантные фрагменты ниже, но не смог сгенерировать итоговый ответ.\n\n' +
+          chunks.map((c, i) => `${i + 1}. ${c.title}: ${c.text.slice(0, 200)}…`).join('\n'),
+        sources: chunks.slice(0, 3).map((c) => ({ title: c.title, url: c.url })),
+      };
+    }
+    throw Object.assign(new Error(`OpenRouter ${lastError?.status ?? 500}: ${lastError?.text ?? ''}`), {
+      status: 502,
+    });
+  }
+
   const answer = data?.choices?.[0]?.message?.content?.trim() || 'Не удалось получить ответ от модели.';
   const sources = extractSources(answer, chunks);
 
