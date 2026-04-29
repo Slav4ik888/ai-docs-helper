@@ -8,10 +8,29 @@ interface Props {
   onAddFile: (file: File) => Promise<void>;
 }
 
+function Spinner() {
+  return (
+    <svg
+      className="animate-spin h-4 w-4 text-brand-600 shrink-0"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
+  );
+}
+
 export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  const [busyMessage, setBusyMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -19,6 +38,7 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     e.preventDefault();
     if (!url.trim()) return;
     setBusy(true);
+    setBusyMessage('Добавляю документ и индексирую содержимое…');
     setError(null);
     try {
       await onAddLink(url.trim(), title.trim() || undefined);
@@ -28,6 +48,7 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
       setError(e instanceof Error ? e.message : 'Не удалось добавить ссылку');
     } finally {
       setBusy(false);
+      setBusyMessage('');
     }
   }
 
@@ -35,6 +56,7 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setBusy(true);
+    setBusyMessage('Загружаю файл и индексирую содержимое…');
     setError(null);
     try {
       await onAddFile(file);
@@ -43,6 +65,7 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
       setError(e instanceof Error ? e.message : 'Не удалось загрузить файл');
     } finally {
       setBusy(false);
+      setBusyMessage('');
     }
   }
 
@@ -65,12 +88,9 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
             className="sm:max-w-xs"
           />
           <Button type="submit" disabled={busy || !url.trim()} className="shrink-0">
-            {busy ? '…' : 'Добавить'}
+            {busy ? <Spinner /> : 'Добавить'}
           </Button>
         </div>
-        <p className="text-xs text-slate-400">
-          Документ должен быть опубликован: «Файл → Опубликовать в интернете».
-        </p>
       </form>
 
       <div className="border-t border-slate-100 pt-3">
@@ -81,9 +101,16 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
           accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileChange}
           disabled={busy}
-          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-brand-100"
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-brand-100 disabled:opacity-50"
         />
       </div>
+
+      {busy && (
+        <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+          <Spinner />
+          <span>{busyMessage}</span>
+        </div>
+      )}
 
       {error && <div className="text-sm text-red-600">{error}</div>}
     </Card>
