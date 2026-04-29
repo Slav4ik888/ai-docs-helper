@@ -18,7 +18,7 @@ export function AdminWidget() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={refetch}>
-            Обновить
+            Обновить индексы
           </Button>
           <Button variant="ghost" onClick={logout}>
             Выйти
