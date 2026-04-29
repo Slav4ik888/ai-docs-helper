@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import mammoth from 'mammoth';
 import * as cheerio from 'cheerio';
+import { GoogleAuth } from 'google-auth-library';
 import { documentRepository } from '../../repositories/document.repository.js';
 import { embedMany } from './embedding.service.js';
 import { addMany, deleteByDocId, clearAll } from '../../lib/vectorStore.js';
@@ -61,12 +62,37 @@ function extractGoogleDocText(docJson) {
   return parts.join('');
 }
 
+let _googleAuth = null;
+
+function getGoogleAuth() {
+  if (_googleAuth) return _googleAuth;
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  try {
+    const credentials = JSON.parse(raw);
+    _googleAuth = new GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/documents.readonly'],
+    });
+    return _googleAuth;
+  } catch (e) {
+    console.error('[gdocs] Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', e.message);
+    return null;
+  }
+}
+
 async function parseGoogleDocsApi(docId) {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}?key=${apiKey}`;
-  const res = await fetch(apiUrl);
+  const auth = getGoogleAuth();
+  if (!auth) throw new Error('No service account configured');
+  const client = await auth.getClient();
+  const { token } = await client.getAccessToken();
+  const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}`;
+  const res = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) {
-    throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText} — ${body}`);
   }
   const json = await res.json();
   return extractGoogleDocText(json);
@@ -87,16 +113,14 @@ async function parseGoogleDocsScrape(url) {
 }
 
 async function parseGoogleDocs(url) {
-  const apiKey = process.env.GOOGLE_API_KEY;
   const m = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-  if (apiKey && m) {
-    const docId = m[1];
-    return parseGoogleDocsApi(docId);
+  if (m && getGoogleAuth()) {
+    return parseGoogleDocsApi(m[1]);
   }
-  if (!apiKey) {
+  if (!getGoogleAuth()) {
     console.warn(
-      '[gdocs] GOOGLE_API_KEY is not set — falling back to /pub scraping. ' +
-      'Set GOOGLE_API_KEY in your environment secrets to support standard share links.',
+      '[gdocs] GOOGLE_SERVICE_ACCOUNT_JSON is not set — falling back to /pub scraping. ' +
+      'Only publicly published documents will be readable.',
     );
   }
   return parseGoogleDocsScrape(url);
@@ -119,16 +143,18 @@ function googleDocsTitleCandidates(url) {
 }
 
 export async function fetchTitleFromUrl(url) {
-  const apiKey = process.env.GOOGLE_API_KEY;
   const m = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
 
-  // When an API key is configured, the Docs API response already contains the
-  // document title — use it directly. Scrape-based candidates are not used in
-  // API mode so that the title is always authoritative.
-  if (apiKey && m) {
+  // When a service account is configured, use the Docs API to get the title directly.
+  if (m && getGoogleAuth()) {
     const docId = m[1];
-    const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}?key=${apiKey}`;
-    const res = await fetch(apiUrl);
+    const auth = getGoogleAuth();
+    const client = await auth.getClient();
+    const { token } = await client.getAccessToken();
+    const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}`;
+    const res = await fetch(apiUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) {
       throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText}`);
     }
@@ -136,7 +162,7 @@ export async function fetchTitleFromUrl(url) {
     return json.title ?? null;
   }
 
-  // Scrape-based candidates are only used when no API key is configured.
+  // Scrape-based candidates are used when no service account is configured.
   for (const candidate of googleDocsTitleCandidates(url)) {
     try {
       const res = await fetch(candidate, {
