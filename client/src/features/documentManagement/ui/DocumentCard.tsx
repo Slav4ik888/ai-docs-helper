@@ -12,14 +12,13 @@ function StatusBadge({ status, error }: { status: IndexStatus; error: string | n
   if (status === 'ok') {
     return (
       <span
-        className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-full px-2 py-0.5 shrink-0"
+        className="inline-grid place-items-center w-5 h-5 rounded-full text-emerald-600 bg-emerald-50 shrink-0"
         title="Документ успешно проиндексирован"
       >
         <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
           <circle cx="6" cy="6" r="5.5" stroke="currentColor" />
           <path d="M3.5 6l1.8 1.8L8.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        Проиндексирован
       </span>
     );
   }
@@ -27,28 +26,26 @@ function StatusBadge({ status, error }: { status: IndexStatus; error: string | n
   if (status === 'error') {
     return (
       <span
-        className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 rounded-full px-2 py-0.5 shrink-0 cursor-help"
-        title={error ?? 'Ошибка индексации'}
+        className="inline-grid place-items-center w-5 h-5 rounded-full text-red-600 bg-red-50 shrink-0 cursor-help"
+        title="Ошибка индексации"
       >
         <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
           <circle cx="6" cy="6" r="5.5" stroke="currentColor" />
           <path d="M6 3.5v3M6 8.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
-        Ошибка
       </span>
     );
   }
 
   return (
     <span
-      className="flex items-center gap-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 shrink-0"
+      className="inline-grid place-items-center w-5 h-5 rounded-full text-slate-400 bg-slate-100 shrink-0"
       title="Документ ожидает индексации"
     >
       <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5.5" stroke="currentColor" />
         <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      Ожидание
     </span>
   );
 }
