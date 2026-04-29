@@ -34,6 +34,12 @@ export const documentRepository = {
       .run(status, error, id);
   },
 
+  updateTitle(id, title) {
+    getDb()
+      .prepare(`UPDATE documents SET title = ? WHERE id = ?`)
+      .run(title, id);
+  },
+
   delete(id) {
     return getDb().prepare(`DELETE FROM documents WHERE id = ?`).run(id);
   },

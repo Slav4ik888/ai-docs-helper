@@ -256,6 +256,20 @@ export async function rebuildIndex() {
   clearAll();
   let total = 0;
   for (const doc of docs) {
+    // Refresh title for Google Docs in case it changed in the source
+    if (doc.type === 'gdocs') {
+      try {
+        const freshTitle = await fetchTitleFromUrl(doc.urlOrPath);
+        if (freshTitle && freshTitle !== doc.title) {
+          documentRepository.updateTitle(doc.id, freshTitle);
+          console.log(`[index] updated title for doc ${doc.id}: "${doc.title}" → "${freshTitle}"`);
+          doc.title = freshTitle;
+        }
+      } catch {
+        // Title refresh is best-effort — continue with existing title
+      }
+    }
+
     try {
       const r = await indexDocument(doc);
       total += r.chunks;
