@@ -29,6 +29,14 @@ export function initDb() {
     );
   `);
 
+  // Migrations: add index status columns if they don't exist yet
+  for (const sql of [
+    `ALTER TABLE documents ADD COLUMN index_status TEXT NOT NULL DEFAULT 'pending'`,
+    `ALTER TABLE documents ADD COLUMN index_error TEXT`,
+  ]) {
+    try { dbInstance.exec(sql); } catch { /* column already exists */ }
+  }
+
   return dbInstance;
 }
 

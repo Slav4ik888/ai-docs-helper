@@ -61,7 +61,12 @@ export const documentService = {
     } catch {}
 
     const doc = documentRepository.insert({ type, title: originalName, urlOrPath: destPath });
-    await indexDocument(doc).catch((e) => console.error('[index] failed for', doc.id, e.message));
+    try {
+      await indexDocument(doc);
+    } catch (e) {
+      console.error('[index] failed for', doc.id, e.message);
+      documentRepository.updateIndexStatus(doc.id, 'error', e.message);
+    }
     return doc;
   },
 

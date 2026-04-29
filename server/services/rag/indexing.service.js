@@ -93,7 +93,7 @@ async function parseGoogleDocsApi(docId) {
   if (!res.ok) {
     if (res.status === 403 || res.status === 404) {
       const err = new Error(
-        'This Google Doc cannot be accessed. Make sure the document is shared with "Anyone with the link" and try again.',
+        'К этому документу Google нет доступа. Убедитесь, что документ доступен для просмотра всем, у кого есть ссылка, и повторите попытку. Или добавьте в этот документ сервисный аккаунт (если вы его знаете).',
       );
       err.status = res.status;
       throw err;
@@ -214,6 +214,8 @@ async function extractText(doc) {
 
 /**
  * Index a single document: extract text, chunk, embed, persist.
+ * Updates index_status in the DB to 'ok' on success.
+ * Throws on failure (caller is responsible for setting 'error' status if needed).
  */
 export async function indexDocument(doc) {
   // Remove any existing chunks for this doc first
@@ -223,6 +225,7 @@ export async function indexDocument(doc) {
   const chunks = chunkText(text);
   if (chunks.length === 0) {
     console.warn(`[index] document ${doc.id} produced 0 chunks`);
+    documentRepository.updateIndexStatus(doc.id, 'ok');
     return { docId: doc.id, chunks: 0 };
   }
 
@@ -240,6 +243,7 @@ export async function indexDocument(doc) {
     },
   }));
   addMany(items);
+  documentRepository.updateIndexStatus(doc.id, 'ok');
   console.log(`[index] document ${doc.id} (${doc.title}): ${chunks.length} chunks`);
   return { docId: doc.id, chunks: chunks.length };
 }
@@ -257,6 +261,7 @@ export async function rebuildIndex() {
       total += r.chunks;
     } catch (err) {
       console.error(`[index] failed for doc ${doc.id} (${doc.title}):`, err.message);
+      documentRepository.updateIndexStatus(doc.id, 'error', err.message);
     }
   }
   return { documents: docs.length, chunks: total };
