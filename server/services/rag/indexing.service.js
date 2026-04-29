@@ -119,6 +119,24 @@ function googleDocsTitleCandidates(url) {
 }
 
 export async function fetchTitleFromUrl(url) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  const m = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+
+  // When an API key is configured, the Docs API response already contains the
+  // document title — use it directly. Scrape-based candidates are not used in
+  // API mode so that the title is always authoritative.
+  if (apiKey && m) {
+    const docId = m[1];
+    const apiUrl = `https://docs.googleapis.com/v1/documents/${docId}?key=${apiKey}`;
+    const res = await fetch(apiUrl);
+    if (!res.ok) {
+      throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    return json.title ?? null;
+  }
+
+  // Scrape-based candidates are only used when no API key is configured.
   for (const candidate of googleDocsTitleCandidates(url)) {
     try {
       const res = await fetch(candidate, {
