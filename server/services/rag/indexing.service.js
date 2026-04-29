@@ -102,7 +102,7 @@ async function parseGoogleDocsApi(docId) {
     throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText} — ${body}`);
   }
   const json = await res.json();
-  return extractGoogleDocText(json);
+  return { text: extractGoogleDocText(json), title: json.title ?? null };
 }
 
 async function parseGoogleDocsScrape(url) {
@@ -125,7 +125,7 @@ async function parseGoogleDocsScrape(url) {
     const t = $(el).text().trim();
     if (t) parts.push(t);
   });
-  return parts.join('\n');
+  return { text: parts.join('\n'), title: null };
 }
 
 async function parseGoogleDocs(url) {
@@ -140,6 +140,17 @@ async function parseGoogleDocs(url) {
     );
   }
   return parseGoogleDocsScrape(url);
+}
+
+/**
+ * Returns true when a Google Docs URL can have its title fetched together with
+ * its text via the Docs API (i.e. a service account is configured). Callers can
+ * use this to skip a separate title-only request in that case.
+ */
+export function canFetchGoogleDocsTitleViaApi(url) {
+  if (typeof url !== 'string') return false;
+  if (!/\/document\/d\/[a-zA-Z0-9_-]+/.test(url)) return false;
+  return !!getGoogleAuth();
 }
 
 function googleDocsTitleCandidates(url) {
@@ -202,9 +213,9 @@ export async function fetchTitleFromUrl(url) {
 async function extractText(doc) {
   switch (doc.type) {
     case 'pdf':
-      return parsePDF(doc.urlOrPath);
+      return { text: await parsePDF(doc.urlOrPath), title: null };
     case 'word':
-      return parseWord(doc.urlOrPath);
+      return { text: await parseWord(doc.urlOrPath), title: null };
     case 'gdocs':
       return parseGoogleDocs(doc.urlOrPath);
     default:
@@ -215,13 +226,29 @@ async function extractText(doc) {
 /**
  * Index a single document: extract text, chunk, embed, persist.
  * Updates index_status in the DB to 'ok' on success.
+ * For Google Docs in API mode, the title is fetched in the same request as
+ * the text. If the document was inserted with a placeholder title equal to
+ * its URL, the freshly extracted title is adopted (in DB and on `doc`) so
+ * chunk metadata is correct from the start.
  * Throws on failure (caller is responsible for setting 'error' status if needed).
  */
 export async function indexDocument(doc) {
   // Remove any existing chunks for this doc first
   deleteByDocId(doc.id);
 
-  const text = await extractText(doc);
+  const { text, title: extractedTitle } = await extractText(doc);
+
+  // Adopt extractor-supplied title when the current title is just the URL
+  // placeholder set during a fresh insert. This avoids a second fetch from
+  // the source just to get the title.
+  if (extractedTitle && doc.title === doc.urlOrPath) {
+    const cleanTitle = extractedTitle.replace(/\s*-\s*Google Docs\s*$/i, '').trim();
+    if (cleanTitle) {
+      documentRepository.updateTitle(doc.id, cleanTitle);
+      doc.title = cleanTitle;
+    }
+  }
+
   const chunks = chunkText(text);
   if (chunks.length === 0) {
     console.warn(`[index] document ${doc.id} produced 0 chunks`);

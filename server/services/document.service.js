@@ -3,7 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { documentRepository } from '../repositories/document.repository.js';
 import { deleteByDocId } from '../lib/vectorStore.js';
-import { rebuildIndex, indexDocument, fetchTitleFromUrl } from './rag/indexing.service.js';
+import {
+  rebuildIndex,
+  indexDocument,
+  fetchTitleFromUrl,
+  canFetchGoogleDocsTitleViaApi,
+} from './rag/indexing.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,13 +31,19 @@ export const documentService = {
   async addLink({ url, title }) {
     if (!url || typeof url !== 'string') throw httpError(400, 'url is required');
     let finalTitle = title && String(title).trim();
-    if (!finalTitle) {
+    // In Google Docs API mode, the title is returned by the same request that
+    // fetches the document text, so we let `indexDocument` set it from there
+    // instead of making a separate title-only request here. In scrape mode,
+    // the text extractor cannot return a title, so we still fetch it up front.
+    if (!finalTitle && !canFetchGoogleDocsTitleViaApi(url)) {
       const fetched = await fetchTitleFromUrl(url).catch(() => null);
       if (fetched) {
         // Google Docs returns "<DocName> - Google Docs"; strip that suffix.
         finalTitle = fetched.replace(/\s*-\s*Google Docs\s*$/i, '').trim();
       }
     }
+    // Insert with the URL as a placeholder when we don't yet know the title.
+    // `indexDocument` will replace it with the API-supplied title in that case.
     if (!finalTitle) finalTitle = url;
     const doc = documentRepository.insert({ type: 'gdocs', title: finalTitle, urlOrPath: url });
     try {
