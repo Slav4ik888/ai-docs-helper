@@ -35,8 +35,14 @@ export const documentService = {
     }
     if (!finalTitle) finalTitle = url;
     const doc = documentRepository.insert({ type: 'gdocs', title: finalTitle, urlOrPath: url });
-    // Index in background but await so user sees error if parsing fails immediately
-    await indexDocument(doc).catch((e) => console.error('[index] failed for', doc.id, e.message));
+    try {
+      await indexDocument(doc);
+    } catch (e) {
+      documentRepository.delete(doc.id);
+      deleteByDocId(doc.id);
+      const status = e.status || 500;
+      throw httpError(status, e.message);
+    }
     return doc;
   },
 

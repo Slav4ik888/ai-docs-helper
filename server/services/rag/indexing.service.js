@@ -91,6 +91,13 @@ async function parseGoogleDocsApi(docId) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 403 || res.status === 404) {
+      const err = new Error(
+        'This Google Doc cannot be accessed. Make sure the document is shared with "Anyone with the link" and try again.',
+      );
+      err.status = res.status;
+      throw err;
+    }
     const body = await res.text().catch(() => '');
     throw new Error(`Google Docs API fetch failed: ${res.status} ${res.statusText} — ${body}`);
   }
