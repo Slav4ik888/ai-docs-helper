@@ -1,5 +1,4 @@
 import { documentService } from '../services/document.service.js';
-import { fetchTitleFromUrl } from '../services/rag/indexing.service.js';
 
 export const documentsController = {
   async list(ctx) {
@@ -19,9 +18,8 @@ export const documentsController = {
     }
 
     if (body.type === 'link' || body.url) {
-      let title = body.title;
-      if (!title) title = (await fetchTitleFromUrl(body.url)) || body.url;
-      const doc = await documentService.addLink({ url: body.url, title });
+      // Title is auto-fetched in the service when not provided.
+      const doc = await documentService.addLink({ url: body.url, title: body.title });
       ctx.status = 201;
       ctx.body = { document: doc };
       return;

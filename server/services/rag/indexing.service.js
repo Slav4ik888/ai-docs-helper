@@ -62,17 +62,41 @@ async function parseGoogleDocs(url) {
   return parts.join('\n');
 }
 
-export async function fetchTitleFromUrl(url) {
-  try {
-    const res = await fetch(googleDocsPubUrl(url), { redirect: 'follow' });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const title = $('title').first().text().trim();
-    return title || null;
-  } catch {
-    return null;
+function googleDocsTitleCandidates(url) {
+  const m = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) {
+    const id = m[1];
+    // /mobilebasic returns the cleanest <title> (no " - Google Docs" suffix)
+    // and works for any doc that is at least "anyone with the link can view".
+    // /pub only works for docs explicitly Published to web.
+    return [
+      `https://docs.google.com/document/d/${id}/mobilebasic`,
+      `https://docs.google.com/document/d/${id}/pub`,
+      `https://docs.google.com/document/d/${id}/preview`,
+    ];
   }
+  return [url];
+}
+
+export async function fetchTitleFromUrl(url) {
+  for (const candidate of googleDocsTitleCandidates(url)) {
+    try {
+      const res = await fetch(candidate, {
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      const raw = $('title').first().text().trim();
+      if (!raw) continue;
+      const cleaned = raw.replace(/\s*-\s*Google Docs\s*$/i, '').trim();
+      if (cleaned && cleaned.toLowerCase() !== 'page not found') return cleaned;
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
 }
 
 async function extractText(doc) {

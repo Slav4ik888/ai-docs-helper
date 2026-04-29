@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { documentRepository } from '../repositories/document.repository.js';
 import { deleteByDocId } from '../lib/vectorStore.js';
-import { rebuildIndex, indexDocument } from './rag/indexing.service.js';
+import { rebuildIndex, indexDocument, fetchTitleFromUrl } from './rag/indexing.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +25,15 @@ export const documentService = {
 
   async addLink({ url, title }) {
     if (!url || typeof url !== 'string') throw httpError(400, 'url is required');
-    const finalTitle = (title && String(title).trim()) || url;
+    let finalTitle = title && String(title).trim();
+    if (!finalTitle) {
+      const fetched = await fetchTitleFromUrl(url).catch(() => null);
+      if (fetched) {
+        // Google Docs returns "<DocName> - Google Docs"; strip that suffix.
+        finalTitle = fetched.replace(/\s*-\s*Google Docs\s*$/i, '').trim();
+      }
+    }
+    if (!finalTitle) finalTitle = url;
     const doc = documentRepository.insert({ type: 'gdocs', title: finalTitle, urlOrPath: url });
     // Index in background but await so user sees error if parsing fails immediately
     await indexDocument(doc).catch((e) => console.error('[index] failed for', doc.id, e.message));
