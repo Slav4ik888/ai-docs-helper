@@ -4,8 +4,10 @@
  *   - Prepends the JWT (if present) to admin requests
  *   - Parses JSON
  *   - Throws an Error with status when the response is not ok
+ *   - Auto-clears auth state when a protected request returns 401
  */
 import { TOKEN_STORAGE_KEY } from '@app/config/constants';
+import { clearAuth } from '@shared/auth/authState';
 
 export type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
@@ -55,6 +57,9 @@ export async function request<T = unknown>(url: string, options: RequestOptions 
   }
 
   if (!res.ok) {
+    if (res.status === 401 && auth) {
+      clearAuth();
+    }
     const message =
       (data && typeof data === 'object' && 'error' in (data as Record<string, unknown>)
         ? String((data as Record<string, unknown>).error)

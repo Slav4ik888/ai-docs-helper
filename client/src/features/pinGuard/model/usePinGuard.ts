@@ -2,22 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { pinApi } from '../api/pinApi';
 import { HttpError } from '@shared/api/axiosInstance';
 import { TOKEN_STORAGE_KEY } from '@app/config/constants';
-
-/**
- * Module-level shared state so every component that calls usePinGuard()
- * sees the same authorization status. (Without this, the PinModal and the
- * AdminPage each had their own React state, so authorizing in the modal
- * would never re-render the page.)
- */
-type Listener = (authorized: boolean) => void;
-const listeners = new Set<Listener>();
-let isAuthorizedShared = typeof window !== 'undefined' && Boolean(window.localStorage.getItem(TOKEN_STORAGE_KEY));
-
-function setAuthorizedShared(value: boolean) {
-  if (isAuthorizedShared === value) return;
-  isAuthorizedShared = value;
-  for (const listener of listeners) listener(value);
-}
+import { isAuthorizedShared, setAuthorizedShared, addAuthListener } from '@shared/auth/authState';
 
 export function usePinGuard() {
   const [isAuthorized, setAuthorized] = useState<boolean>(isAuthorizedShared);
@@ -25,13 +10,7 @@ export function usePinGuard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const listener: Listener = (v) => setAuthorized(v);
-    listeners.add(listener);
-    // Sync once in case state changed before subscribe
-    setAuthorized(isAuthorizedShared);
-    return () => {
-      listeners.delete(listener);
-    };
+    return addAuthListener((v) => setAuthorized(v));
   }, []);
 
   // Also react to changes from other tabs
