@@ -39,4 +39,9 @@ export const documentsController = {
     await documentService.remove(id);
     ctx.body = { success: true };
   },
+
+  async rebuild(ctx) {
+    const stats = await documentService.rebuild();
+    ctx.body = { success: true, ...stats };
+  },
 };

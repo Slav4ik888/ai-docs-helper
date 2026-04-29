@@ -48,5 +48,10 @@ export function useDocuments() {
     [refetch],
   );
 
-  return { documents, loading, error, refetch, addLink, addFile, deleteDocument };
+  const rebuild = useCallback(async () => {
+    await documentsApi.rebuild();
+    await refetch();
+  }, [refetch]);
+
+  return { documents, loading, error, refetch, addLink, addFile, deleteDocument, rebuild };
 }

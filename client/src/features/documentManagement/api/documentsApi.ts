@@ -28,4 +28,10 @@ export const documentsApi = {
       auth: true,
     });
   },
+  rebuild() {
+    return request<{ success: boolean; documents: number; chunks: number }>(ENDPOINTS.documentsRebuild, {
+      method: 'POST',
+      auth: true,
+    });
+  },
 };
