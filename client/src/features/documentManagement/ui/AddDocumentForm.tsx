@@ -33,15 +33,28 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const parseUrls = (value: string) => {
+    const matches = value.match(/https?:\/\/[^\s]+/gi) || [];
+    return [...new Set(matches.map((item) => item.trim()).filter(Boolean))];
+  };
+
   async function handleAddLink(e: FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
+    const urls = parseUrls(url);
+    if (!urls.length) return;
     setBusy(true);
-    setBusyMessage('Добавляю документ и индексирую содержимое…');
+    setBusyMessage('Добавляю документы и индексирую содержимое…');
     setError(null);
     try {
-      await onAddLink(url.trim());
+      const results = await Promise.allSettled(urls.map((item) => onAddLink(item)));
+      const failed = results.filter((result) => result.status === 'rejected');
+      const succeeded = results.length - failed.length;
       setUrl('');
+      if (failed.length && succeeded) {
+        setError(`Добавлено ${succeeded} ссылок, ${failed.length} пропущено`);
+      } else if (failed.length) {
+        setError('Не удалось добавить выбранные ссылки');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось добавить ссылку');
     } finally {
@@ -78,12 +91,13 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     <Card className="p-4 space-y-4">
       <form onSubmit={handleAddLink} className="space-y-2">
         <label className="text-sm font-medium text-slate-700">Ссылка на Google Docs</label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
-            placeholder="https://docs.google.com/document/d/…"
+            placeholder="Вставьте одну или несколько ссылок через пробел, таб или перенос строки"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={busy}
+            className="sm:min-h-24"
           />
           <Button type="submit" disabled={busy || !url.trim()} className="shrink-0">
             {busy ? <Spinner /> : 'Добавить'}
