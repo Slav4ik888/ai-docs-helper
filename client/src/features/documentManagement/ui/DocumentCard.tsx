@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Document, IndexStatus } from '@entities/document';
+import type { Document } from '@entities/document';
 import { getIconByType, getLabelByType } from '@entities/document';
 import { Card } from '@shared/ui/Card';
+import type { IndexStatus } from '@entities/document/model/types';
 
 interface Props {
   document: Document;

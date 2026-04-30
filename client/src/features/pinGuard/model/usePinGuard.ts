@@ -10,7 +10,8 @@ export function usePinGuard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    return addAuthListener((v) => setAuthorized(v));
+    const unsubscribe = addAuthListener((v) => setAuthorized(v));
+    return unsubscribe;
   }, []);
 
   // Also react to changes from other tabs
