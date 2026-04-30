@@ -122,6 +122,13 @@ async function parseGoogleDocsScrape(url) {
   const pubUrl = googleDocsPubUrl(url);
   const res = await fetch(pubUrl, { redirect: 'follow' });
   if (!res.ok) {
+    if (res.status === 401) {
+      const err = new Error(
+        'Google Docs: у вас нет доступа к этому документу. Добавьте email сервисного аккаунта в документ или внутри документа откройте его для всех (для просмотра)',
+      );
+      err.status = res.status;
+      throw err;
+    }
     if (res.status === 403 || res.status === 404) {
       const err = new Error(
         'This Google Doc cannot be accessed. Make sure the document is shared with "Anyone with the link" and try again.',
