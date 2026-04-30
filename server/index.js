@@ -1,3 +1,5 @@
+// server/index.js
+
 import 'dotenv/config';
 import Koa from 'koa';
 import cors from '@koa/cors';

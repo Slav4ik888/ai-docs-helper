@@ -35,6 +35,10 @@
 ## 14:30
  - Решал ошибку с несовместимостью версий операционки на хостинге
 
+## 21:30
+ - Настраивал докер
+ - Nginx
+ - ssl
 
 https://docs.google.com/document/d/1q0Jla2d6hsFKGVuLtSjYYyPGhnxSNNnskZyylMYBIw4/edit?pli=1&tab=t.0#heading=h.mw3hxco3b25c
 
@@ -43,10 +47,6 @@ https://docs.google.com/document/d/1q0Jla2d6hsFKGVuLtSjYYyPGhnxSNNnskZyylMYBIw4/
  - Подскажи обязанности монтажника?
 
 # BUGS / TODO:
- - Загрузил гугл документ, в чате задал вопрос, но вышло сообщение: "В базе знаний пока нет документов."
-
- - Сделай пожалуйста, чтобы во время загрузки документов (во время паузы), была крутилка и сообщение что идёт загрузка. Сейчас во время паузы не понятно, то ли ошибка и не сработало, то ли загрузка продолжается.
-
 
 
 ------------------------------------------------------------------------
@@ -57,9 +57,13 @@ https://docs.google.com/document/d/1q0Jla2d6hsFKGVuLtSjYYyPGhnxSNNnskZyylMYBIw4/
 ## Что узнал в процессе
 
 ------------------------------------------------------------------------
-
+git stash
+git pull
+git stash pop (и если есть конфликт, уладить)
+git add .
+git commit -m "Merge: resolve conflicts"
 
 git push -u origin main
 ------------------------------------------------------------------------
 
-git add . && git commit -m "add promt for dev" && git push
+git add . && git commit -m "add docker" && git push
