@@ -38,6 +38,14 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     return [...new Set(matches.map((item) => item.trim()).filter(Boolean))];
   };
 
+  const formatAddError = (count: number, reason: unknown) => {
+    const message = reason instanceof Error ? reason.message : String(reason || '');
+    if (message.includes('нет доступа к этому документу')) return message;
+    if (message.includes('К этому документу Google нет доступа')) return message;
+    if (message) return message;
+    return `Не удалось добавить ссылку ${count}`;
+  };
+
   async function handleAddLink(e: FormEvent) {
     e.preventDefault();
     const urls = parseUrls(url);
@@ -50,10 +58,12 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
       const failed = results.filter((result) => result.status === 'rejected');
       const succeeded = results.length - failed.length;
       setUrl('');
-      if (failed.length && succeeded) {
-        setError(`Добавлено ${succeeded} ссылок, ${failed.length} пропущено`);
-      } else if (failed.length) {
-        setError('Не удалось добавить выбранные ссылки');
+      if (failed.length === 1 && succeeded === 0) {
+        const failure = failed[0];
+        setError(formatAddError(1, failure.status === 'rejected' ? failure.reason : undefined));
+      } else if (failed.length && succeeded) {
+        const failure = failed[0];
+        setError(`${formatAddError(1, failure.status === 'rejected' ? failure.reason : undefined)}; добавлено ещё ${succeeded} ссылок`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось добавить ссылку');
