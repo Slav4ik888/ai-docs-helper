@@ -53,14 +53,21 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     setBusy(true);
-    setBusyMessage('Загружаю файл и индексирую содержимое…');
+    setBusyMessage('Загружаю файлы и индексирую содержимое…');
     setError(null);
     try {
-      await onAddFile(file);
+      const results = await Promise.allSettled(files.map((file) => onAddFile(file)));
+      const failed = results.filter((result) => result.status === 'rejected');
+      const succeeded = results.length - failed.length;
       if (fileRef.current) fileRef.current.value = '';
+      if (failed.length && succeeded) {
+        setError(`Загружено ${succeeded} файлов, ${failed.length} пропущено из-за неподходящего формата`);
+      } else if (failed.length) {
+        setError('Не удалось загрузить выбранные файлы');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось загрузить файл');
     } finally {
@@ -98,6 +105,7 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
         <input
           ref={fileRef}
           type="file"
+          multiple
           accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileChange}
           disabled={busy}
