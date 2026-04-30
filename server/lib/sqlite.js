@@ -1,18 +1,22 @@
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let dbInstance = null;
 
-export function initDb() {
+async function loadDb() {
   if (dbInstance) return dbInstance;
 
   const dbPath = path.join(__dirname, '..', 'data', 'app.db');
-  dbInstance = new Database(dbPath);
-  dbInstance.pragma('journal_mode = WAL');
+  const SQL = await initSqlJs({
+    locateFile: file => path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'node_modules', 'sql.js', 'dist', file),
+  });
+  const fileBuffer = fs.existsSync(dbPath) ? fs.readFileSync(dbPath) : null;
+  dbInstance = fileBuffer ? new SQL.Database(fileBuffer) : new SQL.Database();
 
   dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS documents (
@@ -40,7 +44,11 @@ export function initDb() {
   return dbInstance;
 }
 
-export function getDb() {
-  if (!dbInstance) initDb();
+export async function initDb() {
+  return loadDb();
+}
+
+export async function getDb() {
+  if (!dbInstance) await loadDb();
   return dbInstance;
 }
