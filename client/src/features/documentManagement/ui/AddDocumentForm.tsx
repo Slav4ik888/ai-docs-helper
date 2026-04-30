@@ -28,7 +28,6 @@ function Spinner() {
 
 export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
   const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyMessage, setBusyMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +40,8 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     setBusyMessage('Добавляю документ и индексирую содержимое…');
     setError(null);
     try {
-      await onAddLink(url.trim(), title.trim() || undefined);
+      await onAddLink(url.trim());
       setUrl('');
-      setTitle('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось добавить ссылку');
     } finally {
@@ -80,19 +78,12 @@ export function AddDocumentForm({ onAddLink, onAddFile }: Props) {
     <Card className="p-4 space-y-4">
       <form onSubmit={handleAddLink} className="space-y-2">
         <label className="text-sm font-medium text-slate-700">Ссылка на Google Docs</label>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-2">
           <Input
             placeholder="https://docs.google.com/document/d/…"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={busy}
-          />
-          <Input
-            placeholder="Название (необязательно)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={busy}
-            className="sm:max-w-xs"
           />
           <Button type="submit" disabled={busy || !url.trim()} className="shrink-0">
             {busy ? <Spinner /> : 'Добавить'}
