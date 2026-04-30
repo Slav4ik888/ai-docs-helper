@@ -11,7 +11,9 @@ export function usePinGuard() {
 
   useEffect(() => {
     const unsubscribe = addAuthListener((v) => setAuthorized(v));
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Also react to changes from other tabs
